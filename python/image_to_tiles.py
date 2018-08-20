@@ -263,8 +263,8 @@ def analyze_dataset(d_seq, sample_diam, flag):
 
 if __name__ == '__main__':
 
-    diams = [350]
-    sample_diam = 150
+    diams = [100, 140, 200, 280]
+    sample_diam = 100
     flag = 'n'
     extract_dataset(diams, sample_diam, flag)
     analyze_dataset(diams, sample_diam, flag)

@@ -33,7 +33,7 @@ def get_position(cell):
 def get_list_of_samples(directory=None, pattern='*].npy'):
 
     if directory is None:
-        directory = 'C:/Users/fredl/Documents/datasets/EACRI HNSCC/processed/'
+        directory = 'C:/Users/fredl/Documents/datasets/EACRI HNSCC/processed_orig_seg/'
 
     files = glob.glob(directory + pattern)
 
@@ -91,7 +91,7 @@ def load_sample(loc, confidence_thresh=0.3, verbose=False, radius_lim=200):
 
     # compile all non-tumor cells (phenotypes besides pdl1 and tumor)
     non_tumor = pd.concat([cells['foxp3'], cells['pdl1'], cells['cd4'], cells['other'],
-                          cells['pdmac'], cells['cd8']])
+                          cells['pdmac'], cells['cd8'], cells['macs']])
     cells['non_tumor'] = non_tumor
 
     if verbose is True:
@@ -103,6 +103,7 @@ def load_sample(loc, confidence_thresh=0.3, verbose=False, radius_lim=200):
         print 'other: ', len(cells['other'])
         print 'pdmac: ', len(cells['pdmac'])
         print 'cd8: ', len(cells['cd8'])
+        print 'macs: ', len(cells['macs'])
         print 'tumor: ', len(cells['tumor'])
 
     return cells
@@ -126,7 +127,8 @@ def compute_decision_boundary(cell_mat, view=False, n_neighbors=25, slide_id='xx
         all_tumor_loc = np.nonzero((cell_mat == 1) | (cell_mat == 2))
         x_tumor = np.vstack((all_tumor_loc[1], all_tumor_loc[0])).T
 
-        nontumor_loc = np.nonzero((cell_mat > 2))
+        # nontumor_loc = np.nonzero((cell_mat > 2))
+        nontumor_loc = np.nonzero((cell_mat == 7))
         x_nontumor = np.vstack((nontumor_loc[1], nontumor_loc[0])).T
 
         X = np.vstack((x_nontumor, x_tumor))

@@ -45,9 +45,12 @@ def record_tumor_edges(slide_id, recompute=False):
 
         cell_mat = np.load(slide_id)
 
-        db = processing.compute_decision_boundary(cell_mat, view=True, n_neighbors=25,
-                                                  slide_id=slide_id, recompute=True,
+        db = processing.compute_decision_boundary(cell_mat, view=False, n_neighbors=25,
+                                                  slide_id=slide_id, recompute=False,
                                                   clean=True, remove_blank_regions=True)
+
+        # store unprocessed regions
+        na_regions = (db == -1)
 
         # skip slide if too little or too much tumor area
         tumor_prop = np.sum(db == 1) / (1392 * 1040)
@@ -60,6 +63,7 @@ def record_tumor_edges(slide_id, recompute=False):
         region = (tmp == 1)
         db[~region] = 0
         db[region] = 1
+        db[na_regions] = -1
 
         # visualize_sampling(db=db, cell_mat=cell_mat)
         np.save(slide_id.split(".npy")[0] + "_edges.npy", db)
@@ -71,21 +75,20 @@ if __name__ == '__main__':
 
     # map_cells_to_mat()
 
-
     all_samples = processing.get_list_of_samples()
 
     # # sort samples by modification time
     # all_samples = helper.get_list_of_samples(pattern='*_seg.npy')
     # all_samples.sort(key=os.path.getmtime)
     # all_samples = [x.split("_seg.npy")[0] + ".npy" for x in all_samples]
+    #
+    pool = mp.Pool(processes=3)
+    results = [pool.apply_async(record_tumor_edges, args=(slide, True)) for slide in all_samples]
+    results = [p.get() for p in results]
+    print results
 
-    # pool = mp.Pool(processes=3)
-    # results = [pool.apply_async(record_tumor_edges, args=(slide, True)) for slide in all_samples]
-    # results = [p.get() for p in results]
-    # print results
-
-    # serial version
-    for i, slide in enumerate(all_samples):
-        print i
-
-        record_tumor_edges(slide, True)
+    # # serial version
+    # for i, slide in enumerate(all_samples):
+    #     print i
+    #
+    #     record_tumor_edges(slide, recompute=True)

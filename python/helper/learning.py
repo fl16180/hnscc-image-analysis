@@ -14,9 +14,14 @@ import helper.metrics as metrics
 
 
 class TestLearner(object):
+    ''' Wrapper for sklearn cross-validation used when additional functionality
+    is needed. For example, it allows regression/classification on transformed y
+    variable while reporting metrics over the untransformed space.
+    '''
     def __init__(self, task='classify', transform=None, replications=None):
         self.task = task
         self.transform = transform
+        self.coefs = None
 
     def test(self, *args, **kwargs):
         if self.task == 'classify':
@@ -40,6 +45,7 @@ class TestLearner(object):
         c1_acc = []
         c2_acc = []
         roc = []
+        coefs = np.array((folds, X.shape[1]))
 
         y_truth = np.copy(y)
         if self.transform is not None:
@@ -68,41 +74,49 @@ class TestLearner(object):
         if rf_oob:
             print "internal score: ", np.mean(internal_score), np.std(internal_score)
 
-    def TestRegressor(self, estimator, X, y, folds=5, rf_oob=True):
+    def TestRegressor(self, estimator, X, y, folds=5, rf_oob=True, get_coef=True):
         cv = KFold(n_splits=folds, shuffle=True)
 
         internal_score = []
         rmse = []
+        mae = []
         corr = []
+        coefs = np.zeros((folds, X.shape[1]))
 
         y_truth = np.copy(y)
         if self.transform is not None:
             tr = VectorTransform(y)
             y = tr.zero_one_scale().apply(self.transform)
 
+        iter = 0
         for train, test in cv.split(X, y):
 
             preds = estimator.fit(X[train], y[train]).predict(X[test])
+
+            if get_coef:
+                coefs[iter, :] = estimator.coef_
 
             if self.transform is not None:
                 preds = tr.undo(preds)
 
             rmse.append(metrics.rmse(preds, y_truth[test]))
+            mae.append(metrics.mae(preds, y_truth[test]))
             corr.append(metrics.corr(preds, y_truth[test]))
 
             if rf_oob:
                 internal_score.append(estimator.oob_score_)
 
-            # y_pred = estimator.predict_proba(X2[test])[:, 1]
-            # # fpr_rf, tpr_rf, _ = roc_curve(y_test, y_pred_rf)
-            # roc.append(roc_auc_score(y[test], y_pred))
+            iter += 1
 
         print "Scores: mean, stdev"
         print "rmse: ", np.mean(rmse), np.std(rmse)
+        print "mae: ", np.mean(mae), np.std(mae)
         print "corr: ", np.mean(corr), np.std(corr)
 
         if rf_oob:
             print "internal score: ", np.mean(internal_score), np.std(internal_score)
+
+        self.coefs = np.mean(coefs, axis=0)
 
 
     def stability_selection():

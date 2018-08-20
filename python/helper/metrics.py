@@ -1,7 +1,8 @@
 from __future__ import division
 import numpy as np
 from math import sqrt
-from scipy.stats.stats import pearsonr
+from scipy.stats import pearsonr
+from scipy.stats import spearmanr
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
 
@@ -15,8 +16,15 @@ def mse(predictions, targets):
     return ((predictions - targets) ** 2).mean()
 
 
-def corr(predictions, targets):
-    corr_c = pearsonr(predictions, targets)
+def mae(predictions, targets):
+    return (np.abs(predictions - targets)).mean()
+
+
+def corr(predictions, targets, type='pearson'):
+    if type == 'pearson':
+        corr_c = pearsonr(predictions, targets)
+    elif type == 'spearman':
+        corr_c = spearmanr(predictions, targets)
     return corr_c[0]
 
 

@@ -3,21 +3,28 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from math import sqrt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn import neighbors
-from matplotlib.colors import ListedColormap
-from scipy.ndimage.filters import convolve
-import cPickle as pickle
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.ensemble import RandomForestRegressor
+# from sklearn.model_selection import train_test_split
+# from sklearn import neighbors
+# from matplotlib.colors import ListedColormap
+# from scipy.ndimage.filters import convolve
+# import cPickle as pickle
 
-import helper
-from predict_pdl1_identity import compute_decision_boundary
-
+# import helper
+# from predict_pdl1_identity import compute_decision_boundary
+import helper.display as display
+import helper.processing as processing
 
 from scipy import ndimage
 
-# all_samples = helper.get_list_of_samples()
+all_samples = processing.get_list_of_samples()
+
+for slide in all_samples:
+    display.compare_decision_boundaries(slide)
+
+
+
 # slide = helper.search_samples('1-26-15__ES13 52013_HP_IM3_22_[26073', all_samples)[0]
 #
 # cell_mat = np.load(slide)
@@ -60,14 +67,14 @@ from scipy import ndimage
 
 
 
-# test 3
-import helper.tileutils as utils
-
-tmp = utils.tile_stack_mask(10, 8, 1, db_stack=None)
-
-tmp2 = tmp.reshape((8,10))
-print tmp2
-
-tmp3 = np.repeat(tmp2, 2, axis=0)
-print tmp3
-print np.repeat(tmp3, 2, axis=1)
+# # test 3
+# import helper.tileutils as utils
+#
+# tmp = utils.tile_stack_mask(10, 8, 1, db_stack=None)
+#
+# tmp2 = tmp.reshape((8,10))
+# print tmp2
+#
+# tmp3 = np.repeat(tmp2, 2, axis=0)
+# print tmp3
+# print np.repeat(tmp3, 2, axis=1)

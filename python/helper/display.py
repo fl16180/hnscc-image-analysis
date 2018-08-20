@@ -4,9 +4,80 @@ from scipy import misc
 import matplotlib.pyplot as plt
 from matplotlib.ticker import NullFormatter
 from matplotlib.colors import ListedColormap
-
 import numpy as np
 import pandas as pd
+
+from processing import get_original_image
+
+
+def compare_decision_boundaries(slide):
+    cell_mat = np.load(slide)
+    all_tumor_loc = np.nonzero((cell_mat == 1) | (cell_mat == 2))
+    x_tumor = np.vstack((all_tumor_loc[1], all_tumor_loc[0])).T
+
+    nontumor_loc = np.nonzero((cell_mat > 2))
+    # nontumor_loc = np.nonzero((cell_mat == 7))
+    x_nontumor = np.vstack((nontumor_loc[1], nontumor_loc[0])).T
+
+    X = np.vstack((x_nontumor, x_tumor))
+    y = np.array(x_nontumor.shape[0] * [0] + x_tumor.shape[0] * [1])
+
+
+    orig = get_original_image(slide)
+    enform = orig.split(".jpg")[0] + "_image_with_tissue_seg.jpg"
+    tumor_only = slide.split(".npy")[0] + "_seg.npy"
+    all_stromal = tumor_only.replace("processed", "processed2")
+
+
+    im1 = misc.imread(orig)
+    im2 = misc.imread(enform)
+    im3 = np.load(tumor_only)
+    im4 = np.load(all_stromal)
+
+    # Create color maps
+    if np.sum(im3==-1) > 0:
+        cmap_light = ListedColormap(['#AAFFAA', '#FFAAAA', '#AAAAFF'])
+    else:
+        cmap_light = ListedColormap(['#FFAAAA', '#AAAAFF'])
+    cmap_bold = ListedColormap(['#FF0000', '#0000FF'])
+
+    # create plot
+    fig, ax = plt.subplots(2, 2, sharex=True, sharey=True)
+
+    # panel 1
+    ax[0,0].imshow(im1)
+    ax[0,0].set_xlim(0, 1392)
+    ax[0,0].set_ylim(0, 1040)
+
+    # panel 2
+    ax[0,1].imshow(im2)
+    ax[0,1].set_xlim(0, 1392)
+    ax[0,1].set_ylim(0, 1040)
+
+    # panel 3
+    xx, yy = np.meshgrid(np.arange(0, 1392, 1),
+                                 np.arange(0, 1040, 1))
+    ax[1,0].pcolormesh(xx, yy, im3, cmap=cmap_light)
+    ax[1,0].scatter(X[:, 0], X[:, 1], c=y, cmap=cmap_bold,
+                edgecolor='k', s=15)
+    ax[1,0].set_xlim(0, 1392)
+    ax[1,0].set_ylim(0, 1040)
+    ax[1,0].invert_yaxis()
+
+
+    # panel 4
+    ax[1,1].pcolormesh(xx, yy, im4, cmap=cmap_light)
+    ax[1,1].scatter(X[:, 0], X[:, 1], c=y, cmap=cmap_bold,
+                edgecolor='k', s=15)
+    ax[1,1].set_xlim(0, 1392)
+    ax[1,1].set_ylim(0, 1040)
+    ax[1,1].invert_yaxis()
+
+    # ax[1,1].set_title("Tumor (blue)-nontumor (red) separation with k = %i"
+              # % (n_neighbors))
+
+    fig.suptitle(slide)
+    plt.show()
 
 
 def visualize_image(image, cells, phenotypes):
@@ -147,6 +218,7 @@ def fixed_scatter(x, y):
     ax.plot([0,1], [0,1], ls="--", c=".3")
 
     plt.show()
+    return fig
 
 
 def dotplot(response, groups, n_patients=30):
@@ -167,3 +239,4 @@ def dotplot(response, groups, n_patients=30):
     ax.set_ylim([0,1])
     ax.set_xlim([-1, n_patients + 1])
     plt.show()
+    return fig
