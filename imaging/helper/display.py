@@ -26,7 +26,7 @@ def compare_decision_boundaries(slide):
     orig = get_original_image(slide)
     enform = orig.split(".jpg")[0] + "_image_with_tissue_seg.jpg"
     tumor_only = slide.split(".npy")[0] + "_seg.npy"
-    all_stromal = tumor_only.replace("processed", "processed2")
+    all_stromal = tumor_only.replace("processed", "processed_orig_seg")
 
 
     im1 = misc.imread(orig)
@@ -90,7 +90,7 @@ def visualize_image(image, cells, phenotypes):
 
 
 def visualize_sampling(db=None, cell_mat=None, response_circles=None, feature_circles=None,
-                       image=None, label=None):
+                       image=None, label=None, phen='tumor'):
     ''' TODO: turn into class that precomputes plot limits, params, etc, with
         methods with optional overlays
     '''
@@ -104,7 +104,7 @@ def visualize_sampling(db=None, cell_mat=None, response_circles=None, feature_ci
     if db is not None:
         plt.imshow(db, cmap=cmap_light)
 
-    if cell_mat is not None:
+    if cell_mat is not None and phen == 'tumor':
 
         tumor_loc = np.nonzero(cell_mat == 1)
         pdl1_loc = np.nonzero(cell_mat == 2)
@@ -113,6 +113,26 @@ def visualize_sampling(db=None, cell_mat=None, response_circles=None, feature_ci
         plt.scatter(tumor_loc[1], tumor_loc[0], c='b', edgecolor='k', s=15)
         plt.scatter(pdl1_loc[1], pdl1_loc[0], c='r', edgecolor='k', s=15)
         plt.scatter(other_loc[1], other_loc[0], c='w', edgecolor='k', s=15)
+
+    if cell_mat is not None and phen == 'all':
+
+        tumor_loc = np.nonzero(cell_mat == 1)
+        pdl1_loc = np.nonzero(cell_mat == 2)
+        foxp3_loc = np.nonzero(cell_mat == 3)
+        cd8_loc = np.nonzero(cell_mat == 4)
+        cd4_loc = np.nonzero(cell_mat == 5)
+        pdmac_loc = np.nonzero(cell_mat == 6)
+        other_loc = np.nonzero(cell_mat == 7)
+        mac_loc = np.nonzero(cell_mat == 8)
+
+        plt.scatter(tumor_loc[1], tumor_loc[0], c='b', edgecolor='k', s=18)
+        plt.scatter(pdl1_loc[1], pdl1_loc[0], c='r', edgecolor='k', s=18)
+        plt.scatter(foxp3_loc[1], foxp3_loc[0], c='g', edgecolor='k', s=18)
+        plt.scatter(cd8_loc[1], cd8_loc[0], c='y', edgecolor='k', s=18)
+        plt.scatter(cd4_loc[1], cd4_loc[0], c='m', edgecolor='k', s=18)
+        plt.scatter(pdmac_loc[1], pdmac_loc[0], c='c', edgecolor='k', s=18)
+        plt.scatter(other_loc[1], other_loc[0], c='w', edgecolor='k', s=18)
+        plt.scatter(mac_loc[1], mac_loc[0], c=(1,.5,0), edgecolor='k', s=18)
 
 
     if response_circles is not None:

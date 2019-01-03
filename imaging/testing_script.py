@@ -1,26 +1,27 @@
 from __future__ import division
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from math import sqrt
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.ensemble import RandomForestRegressor
-# from sklearn.model_selection import train_test_split
-# from sklearn import neighbors
-# from matplotlib.colors import ListedColormap
-# from scipy.ndimage.filters import convolve
-# import cPickle as pickle
+from scipy.special import logit
+from scipy.special import expit
 
-# import helper
-# from predict_pdl1_identity import compute_decision_boundary
-import helper.display as display
 import helper.processing as processing
+import helper.display as display
+import helper.metrics as metrics
+import helper.tile_utils as utils
+import helper.learning as learning
+from helper.utils import print_progress
 
-from scipy import ndimage
+from constants import HOME_PATH, DATA_PATH
+processed_slides = os.path.join(DATA_PATH, 'processed')
 
-all_samples = processing.get_list_of_samples()
 
-for slide in all_samples:
+all_slides = processing.get_list_of_samples(processed_slides)
+
+
+
+for slide in all_slides:
     display.compare_decision_boundaries(slide)
 
 

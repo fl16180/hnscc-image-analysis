@@ -130,20 +130,24 @@ class VectorTransform(object):
         self.scaled = False
         self.transform = None
         self.prior = None
+        self.n = None
 
-    def zero_one_scale(self, prior=0.5):
+    def zero_one_scale(self, n='default', prior=0.5):
         ''' transform formulated by Smithson and Verkuilen 2006 '''
         if self.scaled is True:
             return self
         self.scaled = True
         self.prior = prior
-        n = len(self.vector)
+
+        if n == 'default':
+            n = len(self.vector)
+        self.n = n
 
         self.vector = (self.vector * (n - 1) + prior) / n
         return self
 
     def _unscale(self, arr):
-        n = len(self.vector)
+        n = self.n
         return (arr * n - self.prior) / (n - 1)
 
     def apply(self, transform):
@@ -162,3 +166,31 @@ class VectorTransform(object):
         if self.scaled is True:
             return self._unscale(preds)
         return preds
+
+
+def mean_decrease_accuracy_importance(X, Y, names):
+    ''' Implementation credit to
+        https://blog.datadive.net/selecting-good-features-part-iii-random-forests/
+    '''
+    from sklearn.cross_validation import ShuffleSplit
+    from sklearn.metrics import r2_score
+    from collections import defaultdict
+
+    rf = RandomForestRegressor(n_estimators=500)
+    scores = defaultdict(list)
+
+    #crossvalidate the scores on a number of different random splits of the data
+    for train_idx, test_idx in ShuffleSplit(len(X), 10, .3):
+        X_train, X_test = X[train_idx], X[test_idx]
+        Y_train, Y_test = Y[train_idx], Y[test_idx]
+        r = rf.fit(X_train, Y_train)
+        acc = r2_score(Y_test, rf.predict(X_test))
+        for i in range(X.shape[1]):
+            X_t = X_test.copy()
+            np.random.shuffle(X_t[:, i])
+            shuff_acc = r2_score(Y_test, rf.predict(X_t))
+            scores[names[i]].append((acc-shuff_acc)/acc)
+    print "Features sorted by their score:"
+    print sorted([(round(np.mean(score), 4), feat) for
+                  feat, score in scores.items()], reverse=True)
+    return scores

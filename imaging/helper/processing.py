@@ -33,9 +33,9 @@ def get_position(cell):
 def get_list_of_samples(directory=None, pattern='*].npy'):
 
     if directory is None:
-        directory = 'C:/Users/fredl/Documents/datasets/EACRI HNSCC/processed_orig_seg/'
+        directory = 'C:/Users/fredl/Documents/datasets/EACRI HNSCC/processed/'
 
-    files = glob.glob(directory + pattern)
+    files = glob.glob(os.path.join(directory, pattern))
 
     return sorted(files)
 
@@ -117,7 +117,7 @@ def compute_decision_boundary(cell_mat, view=False, n_neighbors=25, slide_id='xx
             print "Regenerating decision boundary."
             raise IOError()
 
-        DIR = 'C:/Users/fredl/Documents/datasets/EACRI HNSCC/processed/'
+        DIR = 'C:/Users/fredl/Documents/datasets/EACRI HNSCC/processed_orig_seg/'
         Z = np.load(slide_id.split(".npy")[0] + "_seg.npy")
 
         print "Precomputed decision boundary found."

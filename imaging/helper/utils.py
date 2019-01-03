@@ -44,3 +44,17 @@ def nearest_rgb_color(color):
 
     dists = [utils.euclid_dist(np.array(ref[r]), np.array(color)) for r in ref]
     return ref.keys()[dists.index(min(dists))]
+
+
+def logit(p):
+    return np.log(p / (1 - p))
+
+
+def expit(x):
+    return np.exp(x) / (1 + np.exp(x))
+
+
+def zero_one_scale(x, n, prior=0.5):
+    ''' transform formulated by Smithson and Verkuilen 2006 '''
+
+    return (x * (n - 1) + prior) / n

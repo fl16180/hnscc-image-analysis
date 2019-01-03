@@ -5,27 +5,29 @@ import matplotlib.pyplot as plt
 from scipy.special import logit
 from scipy.special import expit
 
-
 import helper.processing
 import helper.display as display
-import helper.metrics
-import helper.tileutils as utils
+import helper.metrics as metrics
+import helper.tile_utils as utils
 import helper.learning as learning
+from helper.utils import print_progress
 
 
+from constants import HOME_PATH, DATA_PATH
 
-def extract_dataset(d_seq, sample_diam, flag):
 
-    np.random.seed(10)
+def extract_dataset(diams, sample_diam, flag):
+
+    np.random.seed(1000)
 
     # set sampling parameters
-    N_SLIDES = 200
-    N_SAMPLES = 10
+    N_SLIDES = 260
+    N_SAMPLES = 15
 
     # set feature extraction parameters
     sample_tile_width = sample_diam
     feature_tile_width = 1
-    feature_layers = 100
+    feature_layers = 75
 
     # compute other parameters based on input parameters
     scale = int(sample_tile_width / feature_tile_width)
@@ -34,16 +36,16 @@ def extract_dataset(d_seq, sample_diam, flag):
     nx, ny = Nx * scale, Ny * scale
     sample_layers = int(np.ceil(feature_layers * feature_tile_width / sample_tile_width))
 
-
     # get pre-processed slide matrices and select random sample of slides
-    all_samples = helper.processing.get_list_of_samples()
+    all_samples = helper.processing.get_list_of_samples(DIR)
     SAMPLES = [all_samples[i] for i in np.random.choice(len(all_samples), N_SLIDES, replace=False)]
 
     # iterate over sampled slides to extract feature and response variables via tile sampling
     combined_features = []
     combined_response = []
+    combined_nts = []
     for i, slide in enumerate(SAMPLES):
-        utils.print_progress(i)
+        print_progress(i)
 
         # load slide and reshape into tile stacks
         cell_mat = np.load(slide)
@@ -73,7 +75,8 @@ def extract_dataset(d_seq, sample_diam, flag):
         sampled_tiles = sample_tile_stack[sampled_indices, :, :]
 
         # compute response variable over sampled tiles
-        response = utils.get_pdl1_response(sampled_tiles, circle=True, diameter=sample_tile_width)
+        response, nts = utils.get_pdl1_response(sampled_tiles, circle=True,
+                                                diameter=sample_tile_width, diagnostic=True)
 
         # compute feature arrays over sampled tiles from neighboring tiles
         feature_rows = np.vstack([utils.get_feature_array(idx, feature_tile_stack, Nx,
@@ -82,17 +85,25 @@ def extract_dataset(d_seq, sample_diam, flag):
         # add outputs to growing array
         combined_response.extend(response)
         combined_features.append(feature_rows)
+        combined_nts.extend(nts)
 
     # convert feature and response to numpy arrays for analysis
     combined_features = np.vstack(combined_features)
     combined_features[np.isnan(combined_features)] = -1
     combined_response = np.array(combined_response)
+    combined_nts = np.array(combined_nts)
 
 
     # ----- variable processing ----- #
 
-    # remove all cases with no tumor cells in the sampled tile
-    mask = combined_response == -1
+    # # remove all cases with no tumor cells in the sampled tile
+    # mask = combined_response == -1
+    # combined_response = combined_response[~mask]
+    # combined_features = combined_features[~mask, :]
+
+    # alternatively, remove all cases with <K tumor cells in the sampled tile
+    print combined_nts.shape, combined_response.shape, combined_features.shape
+    mask = combined_nts < 10
     combined_response = combined_response[~mask]
     combined_features = combined_features[~mask, :]
 
@@ -136,32 +147,43 @@ def extract_dataset(d_seq, sample_diam, flag):
         phen_columns.append(per_phen_features)
     X = np.hstack(phen_columns)
 
-    np.save("data_x", X)
-    np.save("data_y", combined_response)
+    np.save(STORE_DIR + "data_x", X)
+    np.save(STORE_DIR + "data_y", combined_response)
 
 
 
 def analyze_dataset(d_seq, sample_diam, flag):
-    X = np.load("data_x.npy")
-    y = np.load("data_y.npy")
 
-    # X = X[:,4:]
-    # from sklearn.preprocessing import PolynomialFeatures
-    # poly = PolynomialFeatures(2)
-    # X = poly.fit_transform(X)
-    # also try division using polynomials on inverses
+    # remove all cases with no tumor cells in the sampled tile
+    mask = y == -1
+    y = y[~mask]
+    X = X[~mask, :]
 
-    # plt.hist(y, bins=20)
-    # plt.show()
-
-    # convert response array to categorical variable
-    # y = utils.discretize_array(y, n_bins=2, cutoffs=(0.10,))
-
+    X = np.load(STORE_DIR + "data_x.npy")
+    y = np.load(STORE_DIR + "data_y.npy")
     print X.shape, y.shape
 
-    # for i in range(10):
-    #     plt.scatter(X[:,i], X[:,i+1], c=y)
-    #     plt.show()
+    # set aside holdout set here
+
+
+
+    # feature_names = ["".join(["f", str(x)]) for x in range(X.shape[1])]
+    # feature_names.append('y')
+    # feature_names
+    # tmp = pd.DataFrame(np.hstack((X, y.reshape(-1,1))))
+    # tmp.columns = feature_names
+    # tmp.to_csv('local_data.csv', index=False)
+
+    # add logit transformed response variable
+    dtr = learning.VectorTransform(y)
+    yt = dtr.zero_one_scale().apply('logit')
+    plt.hist(yt)
+
+
+    plt.hist(y)
+
+    plt.hist(np.sqrt(y))
+    plt.scatter(X[:,12], y)
 
     # for i in range(30):
     #
@@ -172,16 +194,16 @@ def analyze_dataset(d_seq, sample_diam, flag):
     #     plt.title(phens[p] + '_' + str(diams[r]))
     #     plt.show()
 
-    from sklearn.feature_selection import mutual_info_regression
-    y_noise = y + np.random.normal(scale=0.01, size=(len(y)))
-    for i in range(6):
-        print "Phenotype ", i
-        mi = mutual_info_regression(X[:,i].reshape(-1, 1), y.reshape(-1, 1))
-        print "MI: ", mi
-        # display.scatter_hist(X[:,i], y)
-        # plt.scatter(X[:,i], y_noise, s=0.3)
-        print "Corr: ", helper.metrics.corr(X[:, i], y)
-        # plt.show()
+    # from sklearn.feature_selection import mutual_info_regression
+    # y_noise = y + np.random.normal(scale=0.01, size=(len(y)))
+    # for i in range(6):
+    #     print "Phenotype ", i
+    #     mi = mutual_info_regression(X[:,i].reshape(-1, 1), y.reshape(-1, 1))
+    #     print "MI: ", mi
+    #     # display.scatter_hist(X[:,i], y)
+    #     # plt.scatter(X[:,i], y_noise, s=0.3)
+    #     print "Corr: ", helper.metrics.corr(X[:, i], y)
+    #     # plt.show()
 
 
     # X_train, X_test, y_train, y_test = train_test_split(X, discrete_response,
@@ -201,8 +223,104 @@ def analyze_dataset(d_seq, sample_diam, flag):
     # rf = ExtraTreesClassifier(n_estimators=500, class_weight='balanced', oob_score=True, bootstrap=True)
     # rf = RandomForestRegressor(n_estimators=500, oob_score=True, bootstrap=True)
     # rf = LassoCV(cv=10, normalize=False)
+    #### fit machine learning models ####
+
+    from sklearn.linear_model import LassoCV
+    from sklearn.linear_model import Lasso
+    from sklearn.linear_model import RidgeCV
+    from sklearn.linear_model import Ridge
+
+    from sklearn.linear_model import ElasticNetCV
+    from sklearn.linear_model import LinearRegression
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.svm import SVR
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.preprocessing import MaxAbsScaler
+
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.model_selection import RepeatedKFold, GroupKFold
+    ################################################################
+
+    X_ = X
+    y_ = y
+
+    from sklearn.preprocessing import PolynomialFeatures
+    poly = PolynomialFeatures(2)
+    X_p = np.hstack(((X+1), 1/(X+1)))
+    X_p = poly.fit_transform(X_p)
+    X_p = np.sqrt(X_p)
+    X_p.shape
+    X_ = X_p
+
+    plt.scatter(X_[:,4], y_)
+
+    rep_scores = []
+    estimator = RidgeCV()
+    estimator = RandomForestRegressor(n_estimators=50)
+    cv = RepeatedKFold(n_splits=10, n_repeats=1)
+    out_sample = {'pred': [], 'target': []}
+    for train, test in cv.split(X_, y_):
+
+        X_train = X_[train]
+        X_test = X_[test]
+        y_train = y_[train]
+        y_test = y_[test]
+
+        # X_train = np.sqrt(X_train + 1)
+        # X_test = np.sqrt(X_test + 1)
+
+        scale = StandardScaler()
+        X_train = scale.fit_transform(X_train)
+        X_test = scale.transform(X_test)
+
+        # X_train = pca.fit_transform(X_train)
+        # X_test = pca.transform(X_test)
 
 
+        preds = estimator.fit(X_train, y_train).predict(X_test)
+        # preds = dtr.undo(preds)
+        # y_test = dtr.undo(y_test)
+
+        rep_scores.append(metrics.rmse(preds, y_test))
+        # rep_scores.append(estimator.score(X_test, y_test))
+
+        out_sample['pred'].extend(preds)
+        out_sample['target'].extend(y_test)
+
+    print np.mean(rep_scores), np.std(rep_scores)
+
+
+    plt.scatter(preds, y_test)
+
+    # dict elements from list to array
+    for key, value in out_sample.iteritems():
+        out_sample[key] = np.array(value)
+
+    metrics.rmse(out_sample['pred'], out_sample['target'])
+    fig = plt.scatter(out_sample['pred'], out_sample['target'])
+
+    np.sqrt(np.mean(out_sample['target'] ** 2))
+
+
+    y_test
+    plt.hist(yt)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ################################################################
 
     # # rf = AdaBoostClassifier(n_estimators=500)
     # # rf = LogisticRegression(penalty='l2')
@@ -263,8 +381,8 @@ def analyze_dataset(d_seq, sample_diam, flag):
 
 if __name__ == '__main__':
 
-    diams = [100, 140, 200, 280]
-    sample_diam = 100
+    diams = [150, 189, 238, 300]
+    sample_diam = 150
     flag = 'n'
     extract_dataset(diams, sample_diam, flag)
-    analyze_dataset(diams, sample_diam, flag)
+    # analyze_dataset(diams, sample_diam, flag)

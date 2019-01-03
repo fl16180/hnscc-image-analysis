@@ -12,13 +12,9 @@ import helper.display as display
 import helper.metrics as metrics
 
 import texture_analysis
-reload(texture_analysis)
-reload(processing)
 
-HOME_DIR = 'C:/Users/fredl/Documents/repos/hnscc-image-analysis'
+from constants import HOME_PATH, DATA_PATH
 
-
-# predict number of pdl1 clusters on slide?? (poisson reg)
 
 def main():
     all_samples = processing.get_list_of_samples()
@@ -27,6 +23,7 @@ def main():
     combined_response = []
     used_samples = []
 
+    # iterate over all slides
     for count, slide in enumerate(all_samples):
         utils.print_progress(count)
 
@@ -38,7 +35,7 @@ def main():
             print "skipping slide with no region info"
             continue
 
-        corr_row = texture_analysis.get_tile_correlation(cell_mat, dist=[50])
+        # corr_row = texture_analysis.get_tile_correlation(cell_mat, dist=[50])
 
         # disregard unclassified regions for total area
         tumor_area = np.sum(regions==1) / 1000
@@ -51,13 +48,13 @@ def main():
         # slide-level cell counts
         n_tumor = np.sum(cell_mat == 1)
         n_pdl1 = np.sum(cell_mat == 2)
-        n_any_tumor = n_tumor + n_pdl1 + 2
-        n_foxp3 = np.sum(cell_mat == 3) + 2
-        n_cd8 = np.sum(cell_mat == 4) + 2
-        n_cd4 = np.sum(cell_mat == 5) + 2
-        n_pdmac = np.sum(cell_mat == 6) + 2
-        n_other = np.sum(cell_mat == 7) + 2
-        n_macs = np.sum(cell_mat == 8) + 2
+        n_any_tumor = n_tumor + n_pdl1
+        n_foxp3 = np.sum(cell_mat == 3)
+        n_cd8 = np.sum(cell_mat == 4)
+        n_cd4 = np.sum(cell_mat == 5)
+        n_pdmac = np.sum(cell_mat == 6)
+        n_other = np.sum(cell_mat == 7)
+        n_macs = np.sum(cell_mat == 8)
 
         # all_densities = [n_any_tumor, n_foxp3, n_cd8, n_cd4,
         #                             n_pdmac, n_other, n_macs] / total_area
@@ -66,53 +63,54 @@ def main():
         # all_densities = [n_any_tumor, n_foxp3, n_cd8, n_cd4,
         #                             n_pdmac, n_other, n_macs]
 
+        feature_row = [tumor_area/total_area, stromal_area/total_area, n_tumor, n_pdl1, n_any_tumor,n_foxp3,n_cd8,n_cd4,n_pdmac,n_other,n_macs]
 
-        # stromal cell counts
-        ns_tumor = np.sum((cell_mat == 1) * stromal_mask)
-        ns_pdl1 = np.sum((cell_mat == 2) * stromal_mask)
-        ns_any_tumor = ns_tumor + ns_pdl1 + 1
-        ns_foxp3 = np.sum((cell_mat == 3) * stromal_mask) + 1
-        ns_cd8 = np.sum((cell_mat == 4) * stromal_mask) + 1
-        ns_cd4 = np.sum((cell_mat == 5) * stromal_mask) + 1
-        ns_pdmac = np.sum((cell_mat == 6) * stromal_mask) + 1
-        ns_other = np.sum((cell_mat == 7) * stromal_mask) + 1
-        ns_macs = np.sum((cell_mat == 8) * stromal_mask) + 1
-
+        # # stromal cell counts
+        # ns_tumor = np.sum((cell_mat == 1) * stromal_mask)
+        # ns_pdl1 = np.sum((cell_mat == 2) * stromal_mask)
+        # ns_any_tumor = ns_tumor + ns_pdl1 + 1
+        # ns_foxp3 = np.sum((cell_mat == 3) * stromal_mask) + 1
+        # ns_cd8 = np.sum((cell_mat == 4) * stromal_mask) + 1
+        # ns_cd4 = np.sum((cell_mat == 5) * stromal_mask) + 1
+        # ns_pdmac = np.sum((cell_mat == 6) * stromal_mask) + 1
+        # ns_other = np.sum((cell_mat == 7) * stromal_mask) + 1
+        # ns_macs = np.sum((cell_mat == 8) * stromal_mask) + 1
+        #
+        # # stromal_densities = [ns_any_tumor, ns_foxp3, ns_cd8, ns_cd4,
+        # #                                 ns_pdmac, ns_other, ns_macs] / stromal_area
         # stromal_densities = [ns_any_tumor, ns_foxp3, ns_cd8, ns_cd4,
-        #                                 ns_pdmac, ns_other, ns_macs] / stromal_area
-        stromal_densities = [ns_any_tumor, ns_foxp3, ns_cd8, ns_cd4,
-                                        ns_pdmac, ns_other, ns_macs] / np.sum((cell_mat>0)*stromal_area)
-        # stromal_densities = [ns_any_tumor, ns_foxp3, ns_cd8, ns_cd4,
-        #                                 ns_pdmac, ns_other, ns_macs]
-        # in-tumor cell counts
-        nt_tumor = np.sum((cell_mat == 1) * tumor_mask)
-        nt_pdl1 = np.sum((cell_mat == 2) * tumor_mask)
-        nt_any_tumor = nt_tumor + nt_pdl1 + 1
-        nt_foxp3 = np.sum((cell_mat == 3) * tumor_mask) + 1
-        nt_cd8 = np.sum((cell_mat == 4) * tumor_mask) + 1
-        nt_cd4 = np.sum((cell_mat == 5) * tumor_mask) + 1
-        nt_pdmac = np.sum((cell_mat == 6) * tumor_mask) + 1
-        nt_other = np.sum((cell_mat == 7) * tumor_mask) + 1
-        nt_macs = np.sum((cell_mat == 8) * tumor_mask) + 1
-
+        #                                 ns_pdmac, ns_other, ns_macs] / np.sum((cell_mat>0)*stromal_area)
+        # # stromal_densities = [ns_any_tumor, ns_foxp3, ns_cd8, ns_cd4,
+        # #                                 ns_pdmac, ns_other, ns_macs]
+        # # in-tumor cell counts
+        # nt_tumor = np.sum((cell_mat == 1) * tumor_mask)
+        # nt_pdl1 = np.sum((cell_mat == 2) * tumor_mask)
+        # nt_any_tumor = nt_tumor + nt_pdl1 + 1
+        # nt_foxp3 = np.sum((cell_mat == 3) * tumor_mask) + 1
+        # nt_cd8 = np.sum((cell_mat == 4) * tumor_mask) + 1
+        # nt_cd4 = np.sum((cell_mat == 5) * tumor_mask) + 1
+        # nt_pdmac = np.sum((cell_mat == 6) * tumor_mask) + 1
+        # nt_other = np.sum((cell_mat == 7) * tumor_mask) + 1
+        # nt_macs = np.sum((cell_mat == 8) * tumor_mask) + 1
+        #
+        # # tumor_densities = [nt_any_tumor, nt_foxp3, nt_cd8, nt_cd4,
+        # #                                 nt_pdmac, nt_other, nt_macs] / tumor_area
         # tumor_densities = [nt_any_tumor, nt_foxp3, nt_cd8, nt_cd4,
-        #                                 nt_pdmac, nt_other, nt_macs] / tumor_area
-        tumor_densities = [nt_any_tumor, nt_foxp3, nt_cd8, nt_cd4,
-                                        nt_pdmac, nt_other, nt_macs] / np.sum((cell_mat>0)*tumor_area)
-        # tumor_densities = [nt_any_tumor, nt_foxp3, nt_cd8, nt_cd4,
-        #                                 nt_pdmac, nt_other, nt_macs]
+        #                                 nt_pdmac, nt_other, nt_macs] / np.sum((cell_mat>0)*tumor_area)
+        # # tumor_densities = [nt_any_tumor, nt_foxp3, nt_cd8, nt_cd4,
+        # #                                 nt_pdmac, nt_other, nt_macs]
 
 
-        if n_any_tumor < 150:
+        if n_any_tumor < 100:
             print "skipping slide with {0} tumor cells:".format(n_any_tumor)
             continue
-        if (tumor_area/stromal_area < 0.1) or (stromal_area/tumor_area < 0.1):
-            print "skipping slide with tumor:stromal area ratio: ", tumor_area / stromal_area
-            continue
+        # if (tumor_area/stromal_area < 0.1) or (stromal_area/tumor_area < 0.1):
+        #     print "skipping slide with tumor:stromal area ratio: ", tumor_area / stromal_area
+        #     continue
 
 
         # feature_row = np.concatenate((stromal_densities, tumor_densities))
-        feature_row = np.concatenate((stromal_densities, tumor_densities, corr_row))
+        # feature_row = np.concatenate((stromal_densities, tumor_densities, corr_row))
         # feature_row = corr_row
 
         ratio = n_pdl1 / (n_tumor+n_pdl1)
@@ -125,8 +123,7 @@ def main():
     combined_features = np.vstack(combined_features)
     combined_response = np.array(combined_response)
     combined_features.shape
-    used_samples = [x.replace("processed_orig_seg", "processed") for x in used_samples]
-
+    # used_samples = [x.replace("processed_orig_seg", "processed") for x in used_samples]
 
     #### Combine features with clinical information ####
 
@@ -146,12 +143,12 @@ def main():
     id_convert = dict(zip(ids, np.arange(len(ids))))
     all_data['idx'] = [id_convert[str(x)] for x in all_data.id.values]
 
-    # add logit transformed response variable
-    dtr = learning.VectorTransform(all_data.response)
-    all_data['y*'] = dtr.zero_one_scale().apply('logit')
+    # # add logit transformed response variable
+    # dtr = learning.VectorTransform(all_data.response)
+    # all_data['y*'] = dtr.zero_one_scale().apply('logit')
 
 
-    # all_data.head()
+    all_data.head()
     # fig = display.dotplot(all_data.response, all_data.idx, n_patients=40)
     # fig.savefig(HOME_DIR + '/results/whole_slide/dotplot.png', format='png', dpi=150)
 

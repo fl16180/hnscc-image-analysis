@@ -37,6 +37,19 @@ def restack_to_tiles(mat, tile_width, nx, ny):
     return _tile_shape(mat_cut, tile_width, tile_width)
 
 
+def flatten_tile_stack(tiles, tile_width, nx, ny):
+    ''' Inverse operation for restack_to_tiles without restoring missing extra space for
+    non-integer multiples of tile_width. This function has not been converted to matrix manipulation
+    because it is only used for testing. Thus it may be much slower than restack_to_tiles.
+    '''
+    flat = np.zeros((tile_width*ny, tile_width*nx))
+    for i in range(ny):
+        for j in range(nx):
+            idx = i*nx + j
+            flat[tile_width*i:tile_width*(i+1), tile_width*j:tile_width*(j+1)] = tiles[idx]
+    return flat
+
+
 def tile_stack_mask(nx, ny, L, db_stack=None):
     '''
     Constructs an identifier array for masking out unwanted tiles.
@@ -80,8 +93,8 @@ def tile_stack_mask(nx, ny, L, db_stack=None):
 
 
 def sid_to_fid(id, Nx, scale):
-    ''' convert the index of a sampled tile into the index of a feature tile
-        in the top left corner of the sampled tile
+    ''' convert the index of a sampled tile into the index of the feature tile located
+        at the top left corner of the sampled tile
     '''
     i = int(id / Nx)
     j = id % Nx
@@ -97,7 +110,7 @@ def id_feature_tiles(id, Nx, scale, feature_layers):
     return (iv * Nx * scale + jv).reshape(-1)
 
 
-def get_pdl1_response(tiles, circle=False, diameter=None):
+def get_pdl1_response(tiles, circle=False, diameter=None, diagnostic=False):
     ''' construct response variable from sampled tiles.
         tiles is an array of dimension:
             (n_samples x sample_tile_width x sample_tile_width)
@@ -116,8 +129,13 @@ def get_pdl1_response(tiles, circle=False, diameter=None):
 
     n_tumor = np.sum(tiles_c == 1, axis=(1,2))
     n_pdl1 = np.sum(tiles_c == 2, axis=(1,2))
+
     response = n_pdl1 / (n_pdl1 + n_tumor)
     response[np.isnan(response)] = -1
+
+    if diagnostic:
+        n_tumors = n_tumor + n_pdl1
+        return response, n_tumors
 
     return response
 

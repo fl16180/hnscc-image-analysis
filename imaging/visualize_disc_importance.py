@@ -15,6 +15,7 @@ def _2(n):
 
 
 def infer_sign_array(X, y):
+    # array of correlation signs to map back to plot later
     return np.array([np.sign(corr(X[:, i], y)) for i in range(X.shape[1])])
 
 
